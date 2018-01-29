@@ -3,11 +3,11 @@
 I declare that the awesomeness below is a genuine piece of work
 and falls under the McGill code of conduct, to the best of my knowledge.
 -----------------------------------------------------------------
-*/ 
+*/
 
 //Please enter your name and McGill ID below
-//Name: <your name>
-//McGill ID: <magic number>
+//Name: Callum May
+//McGill ID: 260564523
 
 //all the header files you would require
 #include <stdio.h>  //for standard IO
@@ -35,8 +35,7 @@ int isred = 0;
 
 //structure of a single node
 //donot modify this structure
-struct node
-{
+struct node {
     int number;        //the job number
     int pid;           //the process id of the process
     char *cmd;         //string to store the command name
@@ -45,61 +44,59 @@ struct node
 };
 
 // Add a job to the linked list
-void addToJobList(char *args[])
-{
+void addToJobList(char *args[]) {
     //allocate memory for the new job
     struct node *job = malloc(sizeof(struct node));
     //If the job list is empty, create a new head
     if (head_job == NULL)
     {
         //init the job number with 1
-        
+
         //set its pid from the global variable process_id
-        
-        //cmd can be set to arg[0]
-        
+
+        //cmd can be selt to arg[0]
+
         //set the job->next to point to NULL.
-        
+
         //set the job->spawn using time function
         job->spawn = (unsigned int)time(NULL);
         //set head_job to be the job
-        
+
         //set current_job to be head_job
-        
+
     }
 
-    //Otherwise create a new job node and link the current node to it
+        //Otherwise create a new job node and link the current node to it
     else
     {
         //point current_job to head_job
-        
+
         //traverse the linked list to reach the last job
-       
+
 
 
 
         //init all values of the job like above num,pid,cmd.spawn
-        
-        
+
+
         //make next of current_job point to job
-        
+
         //make job to be current_job
-        
+
         //set the next of job to be NULL
-        
+
     }
 }
 
 //Function to refresh job list
 //Run through jobs in linked list and check
 //if they are done executing then remove it
-void refreshJobList()
-{
+void refreshJobList() {
     //pointer require to perform operation 
     //on linked list
     struct node *current_job;
     struct node *prev_job;
-    
+
     //variable to store returned pid 
     pid_t ret_pid;
 
@@ -117,21 +114,20 @@ void refreshJobList()
         {
             //what does this mean
             //do the needful
-            
+
         }
         else
         {
             //what does this mean
             //do the needful
-            
+
         }
     }
     return;
 }
 
 //Function that list all the jobs
-void listAllJobs()
-{
+void listAllJobs() {
     struct node *current_job;
     int ret_pid;
 
@@ -142,11 +138,11 @@ void listAllJobs()
 
     //heading row print only once.
     printf("\nID\tPID\tCmd\tstatus\tspawn-time\n");
-        
-        //traverse the linked list and print using the following statement for each job
-            printf("%d\t%d\t%s\tRUNNING\t%s\n", current_job->number, current_job->pid, current_job->cmd, ctime(&(current_job->spawn)));
-           
-        
+
+    //traverse the linked list and print using the following statement for each job
+    printf("%d\t%d\t%s\tRUNNING\t%s\n", current_job->number, current_job->pid, current_job->cmd, ctime(&(current_job->spawn)));
+
+
     return;
 }
 
@@ -154,8 +150,7 @@ void listAllJobs()
 // you would have to look for a place 
 // where you would call this function.
 // donot modify this function
-void waitForEmptyLL(int nice, int bg)
-{
+void waitForEmptyLL(int nice, int bg) {
     if (nice == 1 && bg == 0)
     {
         while (head_job != NULL)
@@ -168,24 +163,57 @@ void waitForEmptyLL(int nice, int bg)
 }
 
 //function to perform word count
- int wordCount(char *filename,char* flag)
- {
-     int cnt;
-     //if flag is l 
-     //count the number of lines in the file 
-     //set it in cnt
+int wordCount(char *filename,char* flag) {
+    int cnt;
 
-     //if flag is w
-     //count the number of words in the file
-     //set it in cnt
+    int fd = open(filename, O_RDONLY);
+    char character[1];
+    int lineCount = 0, wordCount = 0;
+    enum states { WORD, SPACE};
+    int state = SPACE;
 
-     return cnt;
- }
+    if (fd == -1) {
+        fprintf(stderr, "Failed to open file %s\n", filename);
+        return -1;
+    }
+
+    //Repeat until nothing more to read
+    while (read(fd, character, 1) == 1) {
+        if (character[0] == ' ' || character[0] == '\t') {
+            state = SPACE;
+        } else if (character[0] =='\n') {
+            lineCount++;
+            state = SPACE;
+        } else {
+            if (state == SPACE) {
+                wordCount++;
+            }
+            state = WORD;
+        }
+    }
+
+    //if flag is l
+    //count the number of lines in the file
+    //set it in cnt
+    if (strcmp(flag, "-l") == 0) {
+        cnt = lineCount;
+    }
+    //if flag is w
+    //count the number of words in the file
+    //set it in cnt
+    else if (strcmp(flag, "-w") == 0) {
+        cnt = wordCount;
+    } else {
+        fprintf(stderr, "Invalid argument %s\n", flag);
+        return -1;
+    }
+
+    return cnt;
+}
 
 // function to augment waiting times for a process
 // donot modify this function
-void performAugmentedWait()
-{
+void performAugmentedWait() {
     int w, rem;
     time_t now;
     srand((unsigned int)(time(&now)));
@@ -198,26 +226,24 @@ void performAugmentedWait()
 //simulates running process to foreground
 //by making the parent process wait for
 //a particular process id.
-int waitforjob(char *jobnc)
-{
+int waitforjob(char *jobnc) {
     struct node *trv;
     int jobn = (*jobnc) - '0';
     trv = head_job;
     //traverse through linked list and find the corresponding job
     //hint : traversal done in other functions too
-    
-        //if correspoding job is found 
-        //use its pid to make the parent process wait.
-        //waitpid with proper argument needed here
-    
+
+    //if correspoding job is found
+    //use its pid to make the parent process wait.
+    //waitpid with proper argument needed here
+
     return 0;
 }
 
 // splits whatever the user enters and sets the background/nice flag variable
 // and returns the number of tokens processed
 // donot modify this function
-int getcmd(char *prompt, char *args[], int *background, int *nice)
-{
+int getcmd(char *prompt, char *args[], int *background, int *nice) {
     int length, i = 0;
     char *token, *loc;
     char *line = NULL;
@@ -258,8 +284,7 @@ int getcmd(char *prompt, char *args[], int *background, int *nice)
 
 // this initialises the args to All null.
 // donot modify
-void initialize(char *args[])
-{
+void initialize(char *args[]) {
     for (int i = 0; i < 20; i++)
     {
         args[i] = NULL;
@@ -267,12 +292,12 @@ void initialize(char *args[])
     return;
 }
 
-int main(void)
-{
+int main(void) {
     //args is a array of charater pointers
     //where each pointer points to a string
     //which may be command , flag or filename
     char *args[20];
+    int maxPathSize = 10000;
 
     //flag variables for background, status and nice
     //bg set to 1 if the command is to executed in background
@@ -319,30 +344,44 @@ int main(void)
         }
         else if (!strcmp("fg", args[0]))
         {
-            //bring a background process to foregrounf
+            //bring a background process to foreground
             waitforjob(args[1]);
         }
         else if (!strcmp("cd", args[0]))
         {
-            int result = 0;
-            // if no destination directory given 
-            // change to home directory 
+            // if no destination directory given
+            // change to home directory
+            if (args[1] == NULL) {
+                chdir(getenv("HOME"));
 
-            //if given directory does not exist
-            //print directory does not exit
+            } else {
+                //if given directory does not exist
+                //print directory does not exit
+                //if everything is fine
+                //change to destination directory
+                int result = chdir(args[1]);
+                if (result == -1) {
+                    perror("directory does not exist\n");
+                }
+            }
 
-            //if everthing is fine 
-            //change to destination directory 
+
         }
         else if (!strcmp("pwd", args[0]))
         {
             //use getcwd and print the current working directory
-            
+            char buffer[maxPathSize];
+            printf("%s\n", getcwd(buffer,maxPathSize));
+
         }
         else if(!strcmp("wc",args[0]))
         {
             //call the word count function
-            wordCount(args[2],args[1]);
+            int count = wordCount(args[2],args[1]);
+
+            if (count >= 0) {
+                printf("%d\n", count);
+            }
         }
         else
         {
@@ -399,8 +438,8 @@ int main(void)
                     //while you use open (man 2 open) to open file
 
                     //set ">" and redirected filename to NULL
-                    args[i] = NULL;
-                    args[i + 1] = NULL;
+//                    args[i] = NULL;
+//                    args[i + 1] = NULL;
 
                     //run your command
                     execvp(args[0], args);
