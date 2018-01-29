@@ -17,9 +17,10 @@ int main()
         close(fds[0]);
         //Redirect stdout to pipe write end
         dup2(fds[1], 1);
-        char *argv[2];
+        char *argv[3];
         argv[0] = "ls";
-        argv[1] = NULL;
+        argv[1] = "-C";
+        argv[2] = NULL;
 
         close(fds[1]);
         execvp("ls", argv);
