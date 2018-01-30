@@ -110,17 +110,14 @@ void refreshJobList() {
         //use waitpid to init ret_pid variable
         ret_pid = waitpid(current_job->pid, NULL, WNOHANG);
         //one of the below needs node removal from linked list
-        if (ret_pid == 0)
-        {
-            //what does this mean
-            //do the needful
-
-        }
-        else
-        {
-            //what does this mean
-            //do the needful
-
+        if (ret_pid == 0) {
+            //Child process is not finished, go to next child job
+            prev_job = current_job;
+            current_job = current_job->next;
+        } else {
+            //Child process is finished, remove it from the job list
+            prev_job->next = current_job->next;
+            current_job =current_job->next;
         }
     }
     return;
@@ -147,7 +144,7 @@ void listAllJobs() {
 }
 
 // wait till the linked list is empty
-// you would have to look for a place 
+// you would have to look for a place
 // where you would call this function.
 // donot modify this function
 void waitForEmptyLL(int nice, int bg) {
@@ -163,7 +160,7 @@ void waitForEmptyLL(int nice, int bg) {
 }
 
 //function to perform word count
-int wordCount(char *filename,char* flag) {
+int wordCount(char *filename, char* flag) {
     int cnt;
 
     int fd = open(filename, O_RDONLY);
@@ -302,7 +299,7 @@ int main(void) {
     //flag variables for background, status and nice
     //bg set to 1 if the command is to executed in background
     //nice set to 1 if the command is nice
-    //status  
+    //status
     int bg, status, nice;
 
     //variable to store the process id.
@@ -312,7 +309,7 @@ int main(void) {
     //helpful in output redirection
     int fd1, fd2;
 
-    //your terminal executes endlessly unless 
+    //your terminal executes endlessly unless
     //exit command is received
     while (1)
     {
@@ -325,7 +322,7 @@ int main(void) {
         //get the user input command
         int cnt = getcmd("\n>> ", args, &bg, &nice);
         //keep asking unless the user enters something
-        while (!(cnt >= 1))
+        while (cnt < 1)
             cnt = getcmd("\n>> ", args, &bg, &nice);
 
         //use the if-else ladder to handle built-in commands
@@ -339,7 +336,7 @@ int main(void) {
         }
         else if (!strcmp("exit", args[0]))
         {
-            //exit the execution of endless while loop 
+            //exit the execution of endless while loop
             exit(0);
         }
         else if (!strcmp("fg", args[0]))
@@ -385,7 +382,7 @@ int main(void) {
         }
         else
         {
-            //Now handle the executable commands here 
+            //Now handle the executable commands here
             /* the steps can be..:
             (1) fork a child process using fork()
             (2) the child process will invoke execvp()
@@ -393,17 +390,20 @@ int main(void) {
                 otherwise parent starts the next command... */
 
 
-            //hint : samosas are nice but often there 
+            //hint : samosas are nice but often there
             //is a long waiting line for it.
 
             //create a child
             pid = fork();
 
+            if (pid < 0) {
+                perror("child process error");
+            }
+
             //to check if it is parent
             if (pid > 0)
             {
-                //we are inside parent
-                //printf("inside the parent\n");
+                // we are inside parent
                 if (bg == 0)
                 {
                     //FOREGROUND
@@ -422,33 +422,47 @@ int main(void) {
                 // we are inside the child
 
                 //introducing augmented delay
-                performAugmentedWait();
+                //performAugmentedWait();
 
-                //check for redirection
-                //now you know what does args store
-                //check if args has ">"
-                //if yes set isred to 1
-                //else set isred to 0
+                //Check for redirect
+                int redirectIndex;
+                char *fileName;
+                for (redirectIndex = 0; redirectIndex < 20; redirectIndex++) {
+                    if (args[redirectIndex] != NULL && strcmp(args[redirectIndex], ">") == 0) {
+                        isred = 1;
+                        fileName = args[redirectIndex + 1];
+                        break;
+                    } else {
+                        isred = 0;
+                    }
+                }
+
+
+
 
                 //if redirection is enabled
-                if (isred == 1)
-                {
-                    //open file and change output from stdout to that  
-                    //make sure you use all the read write exec authorisation flags
-                    //while you use open (man 2 open) to open file
+                if (isred == 1) {
+                    //Make sure file exists
+                    if (fileName == NULL) {
+                        perror("Please specify an output file");
+                        continue;
+                    }
 
-                    //set ">" and redirected filename to NULL
-//                    args[i] = NULL;
-//                    args[i + 1] = NULL;
-
-                    //run your command
+                    //Save std out before redirect
+                    int saved_stdout = dup(1);
+                    close(1);
+                    //open redirect file
+                    int fd = open(fileName, O_RDWR| O_CREAT, S_IRUSR | S_IWUSR);
+                    args[redirectIndex] = NULL;
+                    args[redirectIndex + 1] = NULL;
                     execvp(args[0], args);
-
                     //restore to stdout
+                    close(fd);
+                    dup2(saved_stdout, 1);
+                    close(saved_stdout);
                     fflush(stdout);
                 }
-                else
-                {
+                else {
                     //simply execute the command.
                     execvp(args[0], args);
                 }
