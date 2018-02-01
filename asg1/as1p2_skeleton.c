@@ -51,40 +51,43 @@ void addToJobList(char *args[]) {
     if (head_job == NULL)
     {
         //init the job number with 1
-
+        job->number = 1;
         //set its pid from the global variable process_id
-
-        //cmd can be selt to arg[0]
-
+        job->pid = process_id;
+        //cmd can be set to arg[0]
+        job->cmd = args[0];
         //set the job->next to point to NULL.
-
+        job->next = NULL;
         //set the job->spawn using time function
         job->spawn = (unsigned int)time(NULL);
         //set head_job to be the job
-
+        head_job = job;
         //set current_job to be head_job
-
+        current_job = job;
     }
 
         //Otherwise create a new job node and link the current node to it
     else
     {
         //point current_job to head_job
-
+        current_job = head_job;
         //traverse the linked list to reach the last job
-
-
-
+        while (current_job->next != NULL) {
+            current_job = current_job->next;
+        }
 
         //init all values of the job like above num,pid,cmd.spawn
-
+        job->number =  current_job->number + 1;
+        job->pid = process_id;
+        job->cmd = args[0];
+        job->spawn = (unsigned int)time(NULL);
 
         //make next of current_job point to job
-
+        current_job->next = job;
         //make job to be current_job
-
+        current_job = job;
         //set the next of job to be NULL
-
+        job->next = NULL;
     }
 }
 
@@ -104,22 +107,28 @@ void refreshJobList() {
     current_job = head_job;
     prev_job = head_job;
 
+    int count = 1;
+
     //traverse through the linked list
-    while (current_job != NULL)
-    {
+    while (current_job != NULL) {
         //use waitpid to init ret_pid variable
         ret_pid = waitpid(current_job->pid, NULL, WNOHANG);
         //one of the below needs node removal from linked list
         if (ret_pid == 0) {
             //Child process is not finished, go to next child job
+            current_job->number = count++;
             prev_job = current_job;
-            current_job = current_job->next;
         } else {
             //Child process is finished, remove it from the job list
-            prev_job->next = current_job->next;
-            current_job =current_job->next;
+            if (current_job == head_job) {
+                head_job = head_job->next;
+            } else {
+                prev_job->next = current_job->next;
+            }
         }
+        current_job = current_job->next;
     }
+
     return;
 }
 
@@ -132,13 +141,16 @@ void listAllJobs() {
     refreshJobList();
 
     //init current_job with head_job
+    current_job = head_job;
 
     //heading row print only once.
     printf("\nID\tPID\tCmd\tstatus\tspawn-time\n");
 
     //traverse the linked list and print using the following statement for each job
-    printf("%d\t%d\t%s\tRUNNING\t%s\n", current_job->number, current_job->pid, current_job->cmd, ctime(&(current_job->spawn)));
-
+    while (current_job != NULL) {
+        printf("%d\t%d\t%s\tRUNNING\t%s\n", current_job->number, current_job->pid, current_job->cmd, ctime(&(current_job->spawn)));
+        current_job = current_job->next;
+    }
 
     return;
 }
@@ -290,11 +302,11 @@ void initialize(char *args[]) {
 }
 
 int main(void) {
-    //args is a array of charater pointers
+    //args is a array of character pointers
     //where each pointer points to a string
     //which may be command , flag or filename
     char *args[20];
-    int maxPathSize = 10000;
+    size_t maxPathSize = 10000;
 
     //flag variables for background, status and nice
     //bg set to 1 if the command is to executed in background
@@ -358,7 +370,7 @@ int main(void) {
                 //change to destination directory
                 int result = chdir(args[1]);
                 if (result == -1) {
-                    perror("directory does not exist\n");
+                    perror("directory does not exist");
                 }
             }
 
@@ -368,7 +380,7 @@ int main(void) {
         {
             //use getcwd and print the current working directory
             char buffer[maxPathSize];
-            printf("%s\n", getcwd(buffer,maxPathSize));
+            printf("%s\n", getcwd(buffer, maxPathSize));
 
         }
         else if(!strcmp("wc",args[0]))
@@ -388,13 +400,12 @@ int main(void) {
             (2) the child process will invoke execvp()
             (3) if background is not specified, the parent will wait,
                 otherwise parent starts the next command... */
-
-
-            //hint : samosas are nice but often there
-            //is a long waiting line for it.
+            waitForEmptyLL(nice, bg);
 
             //create a child
             pid = fork();
+            //Set the global process id to the new child
+            process_id = pid;
 
             if (pid < 0) {
                 perror("child process error");
@@ -408,12 +419,20 @@ int main(void) {
                 {
                     //FOREGROUND
                     // waitpid with proper argument required
+                    //Wait for child process
+                    waitpid(pid, NULL, WUNTRACED);
                 }
                 else
                 {
+                    if (nice == 1) {
+                        perror("a nice task cannot run in the background");
+                    } else {
                     //BACKGROUND
                     process_id = pid;
                     addToJobList(args);
+                    }
+
+
                     // waitpid with proper argument required
                 }
             }
@@ -421,8 +440,12 @@ int main(void) {
             {
                 // we are inside the child
 
+                //Exit child thread if a command
+                if (bg == 1 && nice == 1) {
+                    exit(0);
+                }
                 //introducing augmented delay
-                //performAugmentedWait();
+                performAugmentedWait();
 
                 //Check for redirect
                 int redirectIndex;
@@ -437,14 +460,11 @@ int main(void) {
                     }
                 }
 
-
-
-
                 //if redirection is enabled
                 if (isred == 1) {
                     //Make sure file exists
                     if (fileName == NULL) {
-                        perror("Please specify an output file");
+                        perror("please specify an output file");
                         continue;
                     }
 
@@ -456,6 +476,10 @@ int main(void) {
                     args[redirectIndex] = NULL;
                     args[redirectIndex + 1] = NULL;
                     execvp(args[0], args);
+                    if (status == -1) {
+                        fprintf(stderr, "an error occurred or the command was not found: %s\n", args[0]);
+                    }
+
                     //restore to stdout
                     close(fd);
                     dup2(saved_stdout, 1);
@@ -464,7 +488,11 @@ int main(void) {
                 }
                 else {
                     //simply execute the command.
-                    execvp(args[0], args);
+                    int status = execvp(args[0], args);
+
+                    if (status == -1) {
+                        fprintf(stderr, "an error occurred or the command not found: %s\n", args[0]);
+                    }
                 }
             }
         }
