@@ -107,7 +107,6 @@ void refreshJobList() {
     current_job = head_job;
     prev_job = head_job;
 
-    int count = 1;
 
     //traverse through the linked list
     while (current_job != NULL) {
@@ -116,7 +115,6 @@ void refreshJobList() {
         //one of the below needs node removal from linked list
         if (ret_pid == 0) {
             //Child process is not finished, go to next child job
-            current_job->number = count++;
             prev_job = current_job;
         } else {
             //Child process is finished, remove it from the job list
@@ -173,7 +171,7 @@ void waitForEmptyLL(int nice, int bg) {
 
 //function to perform word count
 int wordCount(char *filename, char* flag) {
-    int cnt;
+    int cnt = 0;
 
     int fd = open(filename, O_RDONLY);
     char character[1];
@@ -182,8 +180,7 @@ int wordCount(char *filename, char* flag) {
     int state = SPACE;
 
     if (fd == -1) {
-        fprintf(stderr, "Failed to open file %s\n", filename);
-        return -1;
+        fprintf(stderr, "The file does not exist\n");
     }
 
     //Repeat until nothing more to read
@@ -213,8 +210,8 @@ int wordCount(char *filename, char* flag) {
     else if (strcmp(flag, "-w") == 0) {
         cnt = wordCount;
     } else {
-        fprintf(stderr, "Invalid argument %s\n", flag);
-        return -1;
+        fprintf(stderr, "Unrecognized flag\n");
+        fflush(stderr);
     }
 
     return cnt;
@@ -237,12 +234,26 @@ void performAugmentedWait() {
 //a particular process id.
 int waitforjob(char *jobnc) {
     struct node *trv;
-    int jobn = (*jobnc) - '0';
+    int jobn = atoi(jobnc);
     trv = head_job;
+
     //traverse through linked list and find the corresponding job
-    //hint : traversal done in other functions too
+    while (trv != NULL) {
+        if (trv->number == jobn) {
+            break;
+        } else {
+            trv = trv->next;
+        }
+    }
 
     //if correspoding job is found
+    if (trv != NULL) {
+        printf("bringing jobno %d and pid %d to foreground\n", trv->number, trv->pid);
+        fflush(stdout);
+        waitpid(trv->pid, NULL, WUNTRACED);
+    } else {
+        perror("Could not find job");
+    }
     //use its pid to make the parent process wait.
     //waitpid with proper argument needed here
 
@@ -370,7 +381,7 @@ int main(void) {
                 //change to destination directory
                 int result = chdir(args[1]);
                 if (result == -1) {
-                    perror("directory does not exist");
+                    fprintf(stderr, "cd: %s: No such file or directory", args[1]);
                 }
             }
 
@@ -431,19 +442,17 @@ int main(void) {
                     process_id = pid;
                     addToJobList(args);
                     }
-
-
-                    // waitpid with proper argument required
                 }
             }
             else
             {
                 // we are inside the child
 
-                //Exit child thread if a command
+                //Exit child thread if a command is nice and bg
                 if (bg == 1 && nice == 1) {
                     exit(0);
                 }
+
                 //introducing augmented delay
                 performAugmentedWait();
 
@@ -457,6 +466,12 @@ int main(void) {
                         break;
                     } else {
                         isred = 0;
+                    }
+                }
+
+                if (strcmp("ls", args[0]) == 0) {
+                    if (args[1] == NULL) {
+                        args[1] = "-C";
                     }
                 }
 
@@ -479,19 +494,13 @@ int main(void) {
                     if (status == -1) {
                         fprintf(stderr, "an error occurred or the command was not found: %s\n", args[0]);
                     }
-
-                    //restore to stdout
-                    close(fd);
-                    dup2(saved_stdout, 1);
-                    close(saved_stdout);
-                    fflush(stdout);
                 }
                 else {
                     //simply execute the command.
                     int status = execvp(args[0], args);
 
                     if (status == -1) {
-                        fprintf(stderr, "an error occurred or the command not found: %s\n", args[0]);
+                        fprintf(stderr, "an error occurred or the command was not found: %s\n", args[0]);
                     }
                 }
             }
