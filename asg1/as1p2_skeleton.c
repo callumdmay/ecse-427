@@ -246,16 +246,15 @@ int waitforjob(char *jobnc) {
         }
     }
 
-    //if correspoding job is found
+    //if corresponding job is found
     if (trv != NULL) {
         printf("bringing jobno %d and pid %d to foreground\n", trv->number, trv->pid);
         fflush(stdout);
+        //use its pid to make the parent process wait.
         waitpid(trv->pid, NULL, WUNTRACED);
     } else {
-        perror("Could not find job");
+        fprintf(stderr, "could not find job: %d", jobn);
     }
-    //use its pid to make the parent process wait.
-    //waitpid with proper argument needed here
 
     return 0;
 }
@@ -429,7 +428,6 @@ int main(void) {
                 if (bg == 0)
                 {
                     //FOREGROUND
-                    // waitpid with proper argument required
                     //Wait for child process
                     waitpid(pid, NULL, WUNTRACED);
                 }
@@ -440,6 +438,7 @@ int main(void) {
                     } else {
                     //BACKGROUND
                     process_id = pid;
+                    //Add background job to job list
                     addToJobList(args);
                     }
                 }
@@ -466,12 +465,6 @@ int main(void) {
                         break;
                     } else {
                         isred = 0;
-                    }
-                }
-
-                if (strcmp("ls", args[0]) == 0) {
-                    if (args[1] == NULL) {
-                        args[1] = "-C";
                     }
                 }
 
