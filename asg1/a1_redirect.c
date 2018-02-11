@@ -1,6 +1,13 @@
-//
-// Created by Callum May on 2018-01-27.
-//
+/*
+----------------- COMP 310/ECSE 427 Winter 2018 -----------------
+I declare that the awesomeness below is a genuine piece of work
+and falls under the McGill code of conduct, to the best of my knowledge.
+-----------------------------------------------------------------
+*/
+
+//Please enter your name and McGill ID below
+//Name: Callum May
+//McGill ID: 260564523
 
 #include<stdio.h>
 #include<unistd.h>
