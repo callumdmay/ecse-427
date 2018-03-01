@@ -24,8 +24,7 @@
 
 
 int BUFFER_SIZE = 100; //size of queue
-
-
+#define TRUE  1;
 
 // A structure to represent a queue
 struct Queue {
@@ -103,41 +102,60 @@ void print(struct Queue *queue) {
 }
 
 struct Queue *queue;
-pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-sem_t sem_full_count;
+sem_t sem_fill_count;
 sem_t sem_empty_count;
+pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*Producer Function: Simulates an Airplane arriving and dumping 5-10 passengers to the taxi platform */
 void *FnAirplane(void *arg_plane_id) {
     int plane_id = *((int *) arg_plane_id);
     free(arg_plane_id);
 
-    /* Intializes random number generator */
+    // Intializes random number generator
     time_t t;
     srand((unsigned) time(&t));
 
-    while(1) {
+    //Need this to disable endless loop warning in CLion
+    int true = 1;
+    while(true) {
         int passenger_count = 5 + rand() % 6;
         printf("Airplane %d arrives with %d passengers\n", plane_id, passenger_count);
         int i = 0;
         for(i = 0; i < passenger_count; i++) {
             int passenger_id = 1000000 + 1000*(plane_id) + i;
+            //Wait for the empty semaphor
+            sem_wait(&sem_empty_count);
+            pthread_mutex_lock(&queue_mutex);
             printf("Passenger %d of airplane %d arrives to platform\n", passenger_id, plane_id);
             enqueue(queue, passenger_id);
+            pthread_mutex_unlock(&queue_mutex);
+            sem_post(&sem_fill_count);
         }
         sleep(1);
     };
 
- }
+}
 
- /* Consumer Function: simulates a taxi that takes n time to take a passenger home and come back to the airport */
+/* Consumer Function: simulates a taxi that takes n time to take a passenger home and come back to the airport */
 void *FnTaxi(void *arg_taxi_id) {
     int taxi_id = *((int *) arg_taxi_id);
     free(arg_taxi_id);
+
+    //Need this to disable endless loop warning in CLion
+    int true = 1;
+    while(true) {
+        printf("Taxi driver %d arrives\n", taxi_id);
+        sem_wait(&sem_fill_count);
+        pthread_mutex_lock(&queue_mutex);
+        int passenger = dequeue(queue);
+        printf("Taxi driver %d picked up client %d from the platform\n", taxi_id, passenger);
+        pthread_mutex_unlock(&queue_mutex);
+        sem_post(&sem_empty_count);
+        int delay = ((10 + rand()%20)*1000000)/60;
+        usleep(delay);
+    }
 }
-
 int main(int argc, char *argv[]) {
-
     int num_airplanes;
     int num_taxis;
 
@@ -154,8 +172,8 @@ int main(int argc, char *argv[]) {
     //declare arrays of threads and initialize semaphore(s)
     pthread_t *airplane_threads = malloc(sizeof(pthread_t) * num_airplanes);
     pthread_t *taxi_threads = malloc(sizeof(pthread_t) * num_taxis);
-    sem_init(&sem_empty_count, 0, 100);
-    sem_init(&sem_full_count, 0, 0);
+    sem_init(&sem_empty_count, 0, BUFFER_SIZE);
+    sem_init(&sem_fill_count, 0, 0);
 
     int i = 0, ret = -1;
 
