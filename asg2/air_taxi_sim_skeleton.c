@@ -103,19 +103,37 @@ void print(struct Queue *queue) {
 }
 
 struct Queue *queue;
+pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+sem_t sem_full_count;
+sem_t sem_empty_count;
 
 /*Producer Function: Simulates an Airplane arriving and dumping 5-10 passengers to the taxi platform */
-void *FnAirplane(void *cl_id) {
-    printf("In thread");
-    int airplane_id = *((int *) cl_id);
-    free(cl_id);
-    printf("Created airplane with id %d\n", airplane_id);
-}
+void *FnAirplane(void *arg_plane_id) {
+    int plane_id = *((int *) arg_plane_id);
+    free(arg_plane_id);
 
-/* Consumer Function: simulates a taxi that takes n time to take a passenger home and come back to the airport */
-void *FnTaxi(void *pr_id) {
-    int taxi_id = *((int *) pr_id);
-    free(pr_id);
+    /* Intializes random number generator */
+    time_t t;
+    srand((unsigned) time(&t));
+
+    while(1) {
+        int passenger_count = 5 + rand() % 6;
+        printf("Airplane %d arrives with %d passengers\n", plane_id, passenger_count);
+        int i = 0;
+        for(i = 0; i < passenger_count; i++) {
+            int passenger_id = 1000000 + 1000*(plane_id) + i;
+            printf("Passenger %d of airplane %d arrives to platform\n", passenger_id, plane_id);
+            enqueue(queue, passenger_id);
+        }
+        sleep(1);
+    };
+
+ }
+
+ /* Consumer Function: simulates a taxi that takes n time to take a passenger home and come back to the airport */
+void *FnTaxi(void *arg_taxi_id) {
+    int taxi_id = *((int *) arg_taxi_id);
+    free(arg_taxi_id);
 }
 
 int main(int argc, char *argv[]) {
@@ -136,14 +154,12 @@ int main(int argc, char *argv[]) {
     //declare arrays of threads and initialize semaphore(s)
     pthread_t *airplane_threads = malloc(sizeof(pthread_t) * num_airplanes);
     pthread_t *taxi_threads = malloc(sizeof(pthread_t) * num_taxis);
-
-    //create arrays of integer pointers to ids for taxi / airplane threads
-    int *taxi_ids[num_taxis];
-    int *airplane_ids[num_airplanes];
+    sem_init(&sem_empty_count, 0, 100);
+    sem_init(&sem_full_count, 0, 0);
 
     int i = 0, ret = -1;
-    //create threads for airplanes
 
+    //create threads for airplanes
     for (i = 0; i < num_airplanes; i++) {
         printf("Creating airplane thread %d\n", i);
 
@@ -155,7 +171,7 @@ int main(int argc, char *argv[]) {
         }
         //Set the thread argument to an integer
         *arg = i;
-        ret = pthread_create(&airplane_threads[i], NULL, &FnAirplane, i);
+        ret = pthread_create(&airplane_threads[i], NULL, &FnAirplane, arg);
         if (ret != 0) {
             printf("Create pthread error!\n");
             exit(1);
@@ -173,11 +189,20 @@ int main(int argc, char *argv[]) {
         }
         //Set the thread argument to an integer
         *arg = i;
-        ret = pthread_create(&airplane_threads[i], NULL, &FnTaxi, i);
+        ret = pthread_create(&taxi_threads[i], NULL, &FnTaxi, arg);
         if (ret != 0) {
             printf("Create pthread error!\n");
             exit(1);
         }
     }
+
+    for (i = 0; i < num_taxis; i++) {
+        pthread_join(taxi_threads[i], NULL);
+    }
+
+    for (i = 0; i < num_airplanes; i++) {
+        pthread_join(airplane_threads[i], NULL);
+    }
+
     pthread_exit(NULL);
 }
