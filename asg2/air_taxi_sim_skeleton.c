@@ -120,13 +120,19 @@ void *FnAirplane(void *arg_plane_id) {
     while(true) {
         int passenger_count = 5 + rand() % 6;
         printf("Airplane %d arrives with %d passengers\n", plane_id, passenger_count);
+        fflush(stdout);
         int i = 0;
         for(i = 0; i < passenger_count; i++) {
             int passenger_id = 1000000 + 1000*(plane_id) + i;
-            //Wait for the empty semaphor
-            sem_wait(&sem_empty_count);
+            if(sem_trywait(&sem_empty_count) != 0) {
+                //Queue is full, break loop
+                printf("Platform is full: Rest of passengers of plane %d take the bus\n", plane_id);
+                fflush(stdout);
+                break;
+            }
             pthread_mutex_lock(&queue_mutex);
             printf("Passenger %d of airplane %d arrives to platform\n", passenger_id, plane_id);
+            fflush(stdout);
             enqueue(queue, passenger_id);
             pthread_mutex_unlock(&queue_mutex);
             sem_post(&sem_fill_count);
@@ -145,10 +151,17 @@ void *FnTaxi(void *arg_taxi_id) {
     int true = 1;
     while(true) {
         printf("Taxi driver %d arrives\n", taxi_id);
-        sem_wait(&sem_fill_count);
+        fflush(stdout);
+        if(sem_trywait(&sem_fill_count)!= 0) {
+            //The queue is empty, wait for the semaphore
+            printf("Taxi driver %d waits for passengers to enter the platform\n", taxi_id);
+            fflush(stdout);
+            sem_wait(&sem_fill_count);
+        }
         pthread_mutex_lock(&queue_mutex);
         int passenger = dequeue(queue);
         printf("Taxi driver %d picked up client %d from the platform\n", taxi_id, passenger);
+        fflush(stdout);
         pthread_mutex_unlock(&queue_mutex);
         sem_post(&sem_empty_count);
         int delay = ((10 + rand()%20)*1000000)/60;
