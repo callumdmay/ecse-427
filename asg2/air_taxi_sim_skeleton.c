@@ -107,6 +107,7 @@ pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*Producer Function: Simulates an Airplane arriving and dumping 5-10 passengers to the taxi platform */
 void *FnAirplane(void *arg_plane_id) {
+    //Get the plane ID as int and free the void argument memory
     int plane_id = *((int *) arg_plane_id);
     free(arg_plane_id);
 
@@ -117,19 +118,24 @@ void *FnAirplane(void *arg_plane_id) {
     //Need this to disable endless loop warning in CLion
     int true = 1;
     while(true) {
+        //Create the passenger count
         int passenger_count = 5 + rand() % 6;
         printf("Airplane %d arrives with %d passengers\n", plane_id, passenger_count);
         int i = 0;
         for(i = 0; i < passenger_count; i++) {
+            //Create passenger ID
             int passenger_id = 1000000 + 1000*(plane_id) + i;
             if(sem_trywait(&sem_empty_count) != 0) {
                 //Queue is full, break loop
                 printf("Platform is full: Rest of passengers of plane %d take the bus\n", plane_id);
                 break;
             }
+            //Acquire the lock to mutate the queue
             pthread_mutex_lock(&queue_mutex);
+            //Print and enqueue
             printf("Passenger %d of airplane %d arrives to platform\n", passenger_id, plane_id);
             enqueue(queue, passenger_id);
+            //Release lock and increment fill semaphore
             pthread_mutex_unlock(&queue_mutex);
             sem_post(&sem_fill_count);
         }
@@ -140,6 +146,7 @@ void *FnAirplane(void *arg_plane_id) {
 
 /* Consumer Function: simulates a taxi that takes n time to take a passenger home and come back to the airport */
 void *FnTaxi(void *arg_taxi_id) {
+    //Get the taxi ID as int and free the void argument memory
     int taxi_id = *((int *) arg_taxi_id);
     free(arg_taxi_id);
 
@@ -152,11 +159,14 @@ void *FnTaxi(void *arg_taxi_id) {
             printf("Taxi driver %d waits for passengers to enter the platform\n", taxi_id);
             sem_wait(&sem_fill_count);
         }
+        //Acquire the lock to mutate the queue
         pthread_mutex_lock(&queue_mutex);
         int passenger = dequeue(queue);
         printf("Taxi driver %d picked up client %d from the platform\n", taxi_id, passenger);
+        //Release lock and increment empty semaphore
         pthread_mutex_unlock(&queue_mutex);
         sem_post(&sem_empty_count);
+        //Delay a random amount of time between 10 and 30 (fake) seconds
         int delay = ((10 + rand()%20)*1000000)/60;
         usleep(delay);
     }
@@ -220,6 +230,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    //Use pthread join so as to wait on the taxi and airplane threads to finish
     for (i = 0; i < num_taxis; i++) {
         pthread_join(taxi_threads[i], NULL);
     }
