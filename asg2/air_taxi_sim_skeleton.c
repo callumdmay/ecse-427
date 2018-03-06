@@ -24,7 +24,6 @@
 
 
 int BUFFER_SIZE = 100; //size of queue
-#define TRUE  1;
 
 // A structure to represent a queue
 struct Queue {
