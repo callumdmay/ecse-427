@@ -199,10 +199,63 @@ void accessCSCAN(int *request, int numRequest)
 //access the disk location in LOOK
 void accessLOOK(int *request, int numRequest)
 {
+    qsort(request, numRequest, sizeof(int), &cmpfunc);
+    int start = START;
+    int i = 0;
+    int left = -1;
+    int right = numRequest;
+    while(left == -1 && right == numRequest) {
+        if (i == numRequest) {
+            left = numRequest - 1;
+        } else {
+            if (start < 100) {
+                if (request[i] > start) {
+                    left = i - 1;
+                    right = i;
+                }
+            } else {
+                if (request[i] >= start) {
+                    left = i - 1;
+                    right = i;
+                }
+            }
+        }
+        i++;
+    }
+
+    int *newRequest = malloc(numRequest * sizeof(int));
+
+    int queue_index = 0;
+
+    if (start < 100) {
+        while (left!=-1) {
+            newRequest[queue_index] = request[left];
+            left--;
+            queue_index++;
+        }
+
+        while(right != numRequest) {
+            newRequest[queue_index] = request[right];
+            right++;
+            queue_index++;
+        }
+    } else {
+        while(right != numRequest) {
+            newRequest[queue_index] = request[right];
+            right++;
+            queue_index++;
+        }
+
+        while (left!=-1) {
+            newRequest[queue_index] = request[left];
+            left--;
+            queue_index++;
+        }
+    }
     //write your logic here
     printf("\n----------------\n");
     printf("LOOK :");
-    printSeqNPerformance(newRequest, newCnt);
+    printSeqNPerformance(newRequest, numRequest);
     printf("----------------\n");
     return;
 }
