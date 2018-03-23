@@ -57,10 +57,59 @@ void accessFCFS(int *request, int numRequest)
 //access the disk location in SSTF
 void accessSSTF(int *request, int numRequest)
 {
-    //write your logic here
+    int current_head = START;
+    int MAX = HIGH + 1;
+
+    qsort(request, numRequest, sizeof(int), &cmpfunc);
+    int i = 0;
+    int left = -1;
+    int right = numRequest + 1;
+    int min_distance = MAX;
+    while(left == -1) {
+        if (i == numRequest) {
+            left = numRequest - 1;
+            right = numRequest;
+        } else {
+            int current_distance = abs(request[i] - START);
+            if (current_distance <= min_distance) {
+                min_distance = current_distance;
+            } else {
+                left = i -1;
+                right = i;
+            }
+        }
+        i++;
+    }
+
+    int *newRequest = malloc(numRequest * sizeof(int));
+    int queue_index = 0;
+
+    while (left!=-1 || right!= numRequest) {
+        int left_distance = MAX, right_distance = MAX;
+        if(left != -1) {
+            left_distance = abs(request[left] - current_head);
+        }
+
+        if(right != numRequest) {
+            right_distance = abs(request[right] - current_head);
+        }
+
+        if (left_distance < right_distance) {
+            newRequest[queue_index] = request[left];
+            current_head = request[left];
+            queue_index++;
+            left--;
+        } else {
+            newRequest[queue_index] = request[right];
+            current_head = request[right];
+            queue_index++;
+            right++;
+        }
+    }
+
     printf("\n----------------\n");
     printf("SSTF :");
-    printSeqNPerformance(request, numRequest);
+    printSeqNPerformance(newRequest, numRequest);
     printf("----------------\n");
     return;
 }
