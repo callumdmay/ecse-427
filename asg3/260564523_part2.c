@@ -272,7 +272,7 @@ void accessCSCAN(int *request, int numRequest)
 
         newRequest = malloc(numRequest * sizeof(int));
 
-        // -1 accounts for the addition of the 199 to the queue
+        // -2 accounts for the addition of the 199 to the queue
         while(right != numRequest - 2) {
             newRequest[queue_index] = request[right];
             right++;
@@ -365,10 +365,88 @@ void accessLOOK(int *request, int numRequest)
 //access the disk location in CLOOK
 void accessCLOOK(int *request, int numRequest)
 {
-    //write your logic here
+    qsort(request, numRequest, sizeof(int), &cmpfunc);
+    int start = START;
+    int i = 0;
+    int left = -1;
+    int right = numRequest;
+    while(left == -1 && right == numRequest) {
+        if (i == numRequest) {
+            left = numRequest - 1;
+        } else {
+            if (start < 100) {
+                if (request[i] > start) {
+                    left = i - 1;
+                    right = i;
+                }
+            } else {
+                if (request[i] >= start) {
+                    left = i - 1;
+                    right = i;
+                }
+            }
+        }
+        i++;
+    }
+
+    int *newRequest;
+
+    int queue_index = 0;
+
+    int starting_left = left;
+    int starting_right = right;
+
+    if (start < 100) {
+        //go left first
+
+        //We know there's items to the right, thus we have to add an additional element to the array (for seeking to 199)
+        if (right != numRequest) {
+            numRequest++;
+        }
+
+        *newRequest = malloc(numRequest * sizeof(int));
+
+        //Scan items to the left until there are none left
+        while (left!=-1) {
+            newRequest[queue_index] = request[left];
+            left--;
+            queue_index++;
+        }
+
+        //Seek all the way to the right
+        newRequest[queue_index++] = 199;
+        right = numRequest - 2;
+        while(right != starting_left) {
+            newRequest[queue_index] = request[right];
+            right--;
+            queue_index++;
+        }
+    } else {
+        //go right first
+
+        if (left != -1) {
+            numRequest++;
+        }
+
+        *newRequest = malloc(numRequest * sizeof(int));
+
+        while(right != numRequest - 1) {
+            newRequest[queue_index] = request[right];
+            right++;
+            queue_index++;
+        }
+
+        newRequest[queue_index++] = 0;
+        left = 0;
+        while (left!= starting_right) {
+            newRequest[queue_index] = request[left];
+            left++;
+            queue_index++;
+        }
+    }
     printf("\n----------------\n");
     printf("CLOOK :");
-    printSeqNPerformance(newRequest,newCnt);
+    printSeqNPerformance(newRequest, numRequest);
     printf("----------------\n");
     return;
 }
