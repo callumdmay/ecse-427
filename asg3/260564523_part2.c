@@ -142,26 +142,44 @@ void accessSCAN(int *request, int numRequest)
     }
 
     //Increment numRequest to account for SCAN till end
-    numRequest++;
-    int *newRequest = malloc(numRequest * sizeof(int));
 
+    int *newRequest;
     int queue_index = 0;
 
     if (start < 100) {
+        //going left first
+
+        if (right != numRequest) {
+            numRequest++;
+        }
+
+        *newRequest = malloc(numRequest * sizeof(int));
+
         while (left!=-1) {
             newRequest[queue_index] = request[left];
             left--;
             queue_index++;
         }
 
-        newRequest[queue_index++] = 0;
 
-        while(right != numRequest) {
-            newRequest[queue_index] = request[right];
-            right++;
-            queue_index++;
+        //If we have to go right, move all the way left, then start going right
+        if (right != numRequest) {
+            newRequest[queue_index++] = 0;
+
+            while(right != numRequest) {
+                newRequest[queue_index] = request[right];
+                right++;
+                queue_index++;
+            }
         }
     } else {
+        //going right first
+
+        if (left != -1)
+            numRequest++;
+
+        *newRequest = malloc(numRequest * sizeof(int));
+
         // -1 accounts for the addition of the 199 to the queue
         while(right != numRequest - 1) {
             newRequest[queue_index] = request[right];
@@ -169,12 +187,15 @@ void accessSCAN(int *request, int numRequest)
             queue_index++;
         }
 
-        newRequest[queue_index++] = 199;
+        //If we have to go left, move all the way right, then start going left
+        if (left != -1) {
+            newRequest[queue_index++] = 199;
 
-        while (left!=-1) {
-            newRequest[queue_index] = request[left];
-            left--;
-            queue_index++;
+            while (left!=-1) {
+                newRequest[queue_index] = request[left];
+                left--;
+                queue_index++;
+            }
         }
     }
 
@@ -188,10 +209,91 @@ void accessSCAN(int *request, int numRequest)
 //access the disk location in CSCAN
 void accessCSCAN(int *request, int numRequest)
 {
-    //write your logic here
+    qsort(request, numRequest, sizeof(int), &cmpfunc);
+    int start = START;
+    int i = 0;
+    int left = -1;
+    int right = numRequest;
+    while(left == -1 && right == numRequest) {
+        if (i == numRequest) {
+            left = numRequest - 1;
+        } else {
+            if (start < 100) {
+                if (request[i] > start) {
+                    left = i - 1;
+                    right = i;
+                }
+            } else {
+                if (request[i] >= start) {
+                    left = i - 1;
+                    right = i;
+                }
+            }
+        }
+        i++;
+    }
+
+    //Increment numRequest twice to account for CSCAN till end, then wrap
+    int *newRequest;
+
+    int queue_index = 0;
+    int starting_left = left;
+    int starting_right = right;
+    if (start < 100) {
+        //Going left first
+
+        if (right != numRequest)
+            numRequest+= 2;
+
+        newRequest = malloc(numRequest * sizeof(int));
+
+        while (left!=-1) {
+            newRequest[queue_index] = request[left];
+            left--;
+            queue_index++;
+        }
+
+        if (right != numRequest) {
+            newRequest[queue_index++] = 0;
+            newRequest[queue_index++] = 199;
+
+            right = numRequest - 3;
+            while(right != starting_left) {
+                newRequest[queue_index] = request[right];
+                right--;
+                queue_index++;
+            }
+        }
+    } else {
+        //Going right first
+
+        if (left != -1)
+            numRequest+= 2;
+
+        newRequest = malloc(numRequest * sizeof(int));
+
+        // -1 accounts for the addition of the 199 to the queue
+        while(right != numRequest - 2) {
+            newRequest[queue_index] = request[right];
+            right++;
+            queue_index++;
+        }
+
+        if (left != -1) {
+            newRequest[queue_index++] = 199;
+            newRequest[queue_index++] = 0;
+
+            left = 0;
+            while (left!= starting_right) {
+                newRequest[queue_index] = request[left];
+                left++;
+                queue_index++;
+            }
+        }
+    }
     printf("\n----------------\n");
     printf("CSCAN :");
-    printSeqNPerformance(newRequest, newCnt);
+    printSeqNPerformance(newRequest, numRequest);
     printf("----------------\n");
     return;
 }
