@@ -15,6 +15,7 @@ int **max_resources;
 int **alloc_resources;
 int num_resources;
 int num_processes;
+int processes_remaining;
 
 pthread_mutex_t resource_mutex = PTHREAD_MUTEX_INITIALIZER;
 sem_t sem_resources;
@@ -28,7 +29,31 @@ int * create_resource_request(int process_id) {
         request[i] = rand() % (remaining + 1);
     }
 
+    printf("Process %d requesting resources: ", process_id);
+    for (i = 0; i < num_resources; i++) {
+        printf("%d ", request[i]);
+    }
+    printf("\n");
+
     return request;
+}
+
+void print_resource_request_granted(int *request, int process_id) {
+    int i;
+    printf("Process %d resource request was accepted: ", process_id);
+    for (i = 0; i < num_resources; i++) {
+        printf("%d ", request[i]);
+    }
+    printf("\n");
+}
+
+void print_resource_request_rejected(int *request, int process_id) {
+    int i;
+    printf("Process %d resource request was rejected: ", process_id);
+    for (i = 0; i < num_resources; i++) {
+        printf("%d ", request[i]);
+    }
+    printf("\n");
 }
 
 int can_finish(int process_id) {
@@ -68,14 +93,13 @@ void determine_state(int **need, int *finish, int *work, int **temp_alloc) {
 int safety(int *request, int process_id) {
     int i, j;
 
-    //init work matrix
+    //init necessary matrices
     int *work = malloc(num_resources * sizeof(int));
     int *finish = malloc(num_processes * sizeof(int));
-
     int **need = malloc(num_processes * sizeof(int *));
-
     int **temp_alloc = malloc(num_processes * sizeof(int *));
 
+    //Populate temp_alloc matrix and need matrix with appropriate values
     for (i=0; i< num_processes; i++){
         need[i] = malloc(num_resources * sizeof(int));
         temp_alloc[i] = malloc(num_resources * sizeof(int));
@@ -85,12 +109,15 @@ int safety(int *request, int process_id) {
         }
     }
 
+    //Populate work matrix
     for (i=0; i< num_resources; i++)
         work[i] = available[i] - request[i];
 
+    //Set all processes to not finished
     for (i=0; i< num_processes; i++)
         finish[i] = 0;
 
+    //Determine if system is in safe state after resource request allocation
     determine_state(need, finish, work, temp_alloc);
 
     //Free all arrays
@@ -104,8 +131,9 @@ int safety(int *request, int process_id) {
     free(need);
     free(temp_alloc);
 
+    //Determine if all processes finished
     for(i=0; i<num_processes; i++) {
-        if (!finish[i]){
+        if (!finish[i]) {
             free(finish);
             return 0;
         }
@@ -158,36 +186,13 @@ void free_resources(int process_id) {
         available[i] += alloc_resources[process_id][i];
         alloc_resources[process_id][i] = 0;
     }
+    processes_remaining--;
+    for(i = 0; i < processes_remaining; i++)
+        sem_post(&sem_resources);
+
     pthread_mutex_unlock(&resource_mutex);
-    sem_post(&sem_resources);
 
-}
 
-void print_resource_request_granted(int *request, int process_id) {
-    int i;
-    printf("Process %d resource request was accepted: ", process_id);
-    for (i = 0; i < num_resources; i++) {
-        printf("%d ", request[i]);
-    }
-    printf("\n");
-}
-
-void print_resource_request_rejected(int *request, int process_id) {
-    int i;
-    printf("Process %d  resource request was rejected: ", process_id);
-    for (i = 0; i < num_resources; i++) {
-        printf("%d ", request[i]);
-    }
-    printf("\n");
-}
-
-void print_resource_request(int *request, int process_id) {
-    int i;
-    printf("Process %d requesting resources: ", process_id);
-    for (i = 0; i < num_resources; i++) {
-        printf("%d ", request[i]);
-    }
-    printf("\n");
 }
 
 void *fn_process(void *arg_process_id) {
@@ -196,7 +201,6 @@ void *fn_process(void *arg_process_id) {
     int true = 1;
     while(true) {
         int *request  = create_resource_request(process_id);
-        print_resource_request(request, process_id);
         if (bankers(request, process_id)) {
             print_resource_request_granted(request, process_id);
             if (can_finish(process_id)) {
@@ -221,6 +225,8 @@ int main(int argc, char *argv[]) {
     printf("Enter the number of processes: \n");
     scanf("%d", &num_processes);
 
+    processes_remaining = num_processes;
+
     printf("Enter the number of different resources: \n");
     scanf("%d", &num_resources);
 
@@ -235,8 +241,8 @@ int main(int argc, char *argv[]) {
     }
 
     //Create process resource matrix
-    max_resources = malloc(num_processes * sizeof(int));
-    alloc_resources = malloc(num_processes * sizeof(int));
+    max_resources = malloc(num_processes * sizeof(int *));
+    alloc_resources = malloc(num_processes * sizeof(int *));
     for (i=0; i< num_processes; i++){
         alloc_resources[i] = (int *)malloc(num_resources * sizeof(int));
         max_resources[i] = (int *)malloc(num_resources * sizeof(int));
@@ -248,6 +254,10 @@ int main(int argc, char *argv[]) {
             scanf("%d", &resource);
             //Get max values while also initializing alloc matrix to 0
             max_resources[i][j] = resource;
+            if(resource > total_resources[j]) {
+                printf("Process %d requesting more resources than maximum. Exiting\n", i);
+                exit(-1);
+            }
             alloc_resources[i][j] = 0;
         }
     }
@@ -274,10 +284,8 @@ int main(int argc, char *argv[]) {
     }
 
     //Use pthread join so as to wait on the process threads to finish
-    for (i = 0; i < num_processes; i++) {
+    for (i = 0; i < num_processes; i++)
         pthread_join(process_threads[i], NULL);
-    }
 
     return 0;
-
 }
