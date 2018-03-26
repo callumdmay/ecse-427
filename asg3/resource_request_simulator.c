@@ -72,23 +72,21 @@ int safety(int *request, int process_id) {
     int *work = malloc(num_resources * sizeof(int));
     int *finish = malloc(num_processes * sizeof(int));
 
-    int **need = malloc(num_processes * sizeof(int));
+    int **need = malloc(num_processes * sizeof(int *));
 
-    int **temp_alloc = malloc(num_processes * sizeof(int));
+    int **temp_alloc = malloc(num_processes * sizeof(int *));
 
     for (i=0; i< num_processes; i++){
-        need[i] = (int *)malloc(num_resources * sizeof(int));
-        temp_alloc[i] = (int *)malloc(num_resources * sizeof(int));
+        need[i] = malloc(num_resources * sizeof(int));
+        temp_alloc[i] = malloc(num_resources * sizeof(int));
         for (j = 0; j < num_resources; j++) {
             temp_alloc[i][j] = i == process_id ? alloc_resources[i][j] + request[j] : alloc_resources[i][j];
             need[i][j] = max_resources[i][j] - temp_alloc[i][j];
         }
     }
 
-    for (i=0; i< num_resources; i++) {
+    for (i=0; i< num_resources; i++)
         work[i] = available[i] - request[i];
-
-    }
 
     for (i=0; i< num_processes; i++)
         finish[i] = 0;
