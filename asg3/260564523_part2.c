@@ -189,7 +189,7 @@ void accessSCAN(int *request, int numRequest)
 
         //If we have to go left, move all the way right, then start going left
         if (left != -1) {
-            newRequest[queue_index++] = 199;
+            newRequest[queue_index++] = HIGH;
 
             while (left!=-1) {
                 newRequest[queue_index] = request[left];
@@ -254,8 +254,8 @@ void accessCSCAN(int *request, int numRequest)
         }
 
         if (right != numRequest) {
-            newRequest[queue_index++] = 0;
-            newRequest[queue_index++] = 199;
+            newRequest[queue_index++] = LOW;
+            newRequest[queue_index++] = HIGH;
 
             right = numRequest - 3;
             while(right != starting_left) {
@@ -280,8 +280,8 @@ void accessCSCAN(int *request, int numRequest)
         }
 
         if (left != -1) {
-            newRequest[queue_index++] = 199;
-            newRequest[queue_index++] = 0;
+            newRequest[queue_index++] = HIGH;
+            newRequest[queue_index++] = LOW;
 
             left = 0;
             while (left!= starting_right) {
@@ -414,7 +414,7 @@ void accessCLOOK(int *request, int numRequest)
         }
 
         //Seek all the way to the right
-        newRequest[queue_index++] = 199;
+        newRequest[queue_index++] = HIGH;
         right = numRequest - 2;
         while(right != starting_left) {
             newRequest[queue_index] = request[right];
