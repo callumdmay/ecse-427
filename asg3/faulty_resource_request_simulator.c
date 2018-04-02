@@ -217,6 +217,53 @@ void *fn_process(void *arg_process_id) {
     free_resources(process_id);
 }
 
+void *faulty_resource_generator() {
+    int true = 1;
+    int i;
+    while(true) {
+        if (rand() % 2) {
+            pthread_mutex_lock(&resource_mutex);
+
+            //Make sure it is possible to decrement a resource
+            int resource_decrement_possible = 0;
+            for(i=0; i < num_resources; i++) {
+                if (available[i] > 0) {
+                    resource_decrement_possible = 1;
+                }
+            }
+
+            if (resource_decrement_possible) {
+                //Randomly pick a resource
+                int faulty_resource_index = rand() % (num_resources + 1);
+
+                //Keep changing faulty resource index until we find the one (or more) that isn't zero
+                while(available[faulty_resource_index] == 0)
+                    faulty_resource_index = rand() % (num_resources + 1);
+
+                printf("Creating a fault in resource %d\n", faulty_resource_index);
+                available[faulty_resource_index]--;
+            } else {
+                printf("All available resources are 0, decrement not currently possible. Sleeping...\n");
+            }
+
+            pthread_mutex_unlock(&resource_mutex);
+        }
+        sleep(10);
+    }
+}
+
+void *deadlock_detector() {
+    int true = 1;
+    int fake_resource_request[4] = {0, 0, 0, 0};
+    while(true) {
+        if(!bankers(fake_resource_request, 0)) {
+            printf("Deadlock will occur as processes request more resources, exiting...\n");
+            exit(-1);
+        }
+        sleep(10);
+    }
+}
+
 int main(int argc, char *argv[]) {
     int i, j, ret;
 
@@ -283,9 +330,28 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    //Use pthread join so as to wait on the process threads to finish
+    //Create faulty thread for resource faults
+    pthread_t faulty_thread;
+    ret = pthread_create(&faulty_thread, NULL, &faulty_resource_generator, NULL);
+    if (ret != 0) {
+        printf("Create faulty pthread error!\n");
+        exit(1);
+    }
+
+    //Create deadlock detector thread
+    pthread_t deadlock_detector_thread;
+    ret = pthread_create(&deadlock_detector_thread, NULL, &deadlock_detector, NULL);
+    if (ret != 0) {
+        printf("Create deadlock detector pthread error!\n");
+        exit(1);
+    }
+
+    //Use pthread join so as to wait on the threads to finish
     for (i = 0; i < num_processes; i++)
         pthread_join(process_threads[i], NULL);
+
+    pthread_join(faulty_thread, NULL);
+    pthread_join(deadlock_detector_thread, NULL);
 
     return 0;
 }
