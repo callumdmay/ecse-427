@@ -153,7 +153,7 @@ void accessSCAN(int *request, int numRequest)
             numRequest++;
         }
 
-        *newRequest = malloc(numRequest * sizeof(int));
+        newRequest = malloc(numRequest * sizeof(int));
 
         while (left!=-1) {
             newRequest[queue_index] = request[left];
