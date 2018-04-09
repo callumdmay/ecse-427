@@ -404,7 +404,7 @@ void accessCLOOK(int *request, int numRequest)
             numRequest++;
         }
 
-        *newRequest = malloc(numRequest * sizeof(int));
+        newRequest = malloc(numRequest * sizeof(int));
 
         //Scan items to the left until there are none left
         while (left!=-1) {
